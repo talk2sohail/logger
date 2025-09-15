@@ -39,6 +39,8 @@ func (s *store) Append(p []byte) (n uint64, pos uint64, err error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	pos = s.size
+
+	// The length of a record will always be stored with the most significant byte first
 	if err := binary.Write(s.buf, enc, uint64(len(p))); err != nil {
 		return 0, 0, err
 	}
@@ -46,9 +48,9 @@ func (s *store) Append(p []byte) (n uint64, pos uint64, err error) {
 	if err != nil {
 		return 0, 0, err
 	}
-	w += lenWidth
-	s.size += uint64(w)
-	return uint64(w), pos, nil
+	written := uint64(lenWidth + w)
+	s.size += written
+	return written, pos, nil
 }
 
 func (s *store) Read(pos uint64) ([]byte, error) {
