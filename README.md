@@ -1,2 +1,2 @@
 # logger
-A simple memory-mapped, distributed, write-ahead commit logger.
+A simple persisted, append-only, write-ahead log.
