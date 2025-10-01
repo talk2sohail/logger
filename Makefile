@@ -8,7 +8,7 @@ all: compile test
 
 test:
 	@echo "--> Running go tests"
-	go test -race ./...
+	go test -v -race ./...
 
 # ====================================================================================
 # Protobuf
