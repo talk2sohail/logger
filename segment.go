@@ -42,9 +42,13 @@ func newSegment(dir string, baseOffset uint64, c Config) (*segment, error) {
 		return nil, err
 	}
 	if s.index, err = newIndex(indexFile, c); err != nil {
+		storeFile.Close()
 		return nil, err
 	}
-	if off, _, err := s.index.Read(-1); err != nil {
+	off, _, err := s.index.Read(-1)
+	// if we can't read the last entry of the index, it's either a new segment or a corrupted one
+	// in either case, we'll start from the beginning of the segment
+	if err != nil {
 		s.nextOffset = baseOffset
 	} else {
 		s.nextOffset = baseOffset + uint64(off) + 1

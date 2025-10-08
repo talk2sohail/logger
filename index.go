@@ -29,10 +29,12 @@ func newIndex(f *os.File, c Config) (*index, error) {
 		return nil, err
 	}
 	idx.size = uint64(fi.Size())
-	if err = os.Truncate(
-		f.Name(), int64(c.Segment.MaxIndexBytes),
-	); err != nil {
-		return nil, err
+	if idx.size == 0 { // revisit this later?
+		if err = os.Truncate(
+			f.Name(), int64(c.Segment.MaxIndexBytes),
+		); err != nil {
+			return nil, err
+		}
 	}
 	if idx.mmap, err = gommap.Map(
 		idx.file.Fd(),
