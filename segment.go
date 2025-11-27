@@ -2,13 +2,13 @@ package logger
 
 import (
 	"bufio"
+	"bytes"
 	"fmt"
 	"io"
 	"os"
 	"path"
 
 	api "github.com/talk2sohail/logger/api/v1"
-	"google.golang.org/protobuf/proto"
 )
 
 type segment struct {
@@ -85,11 +85,12 @@ func newSegment(dir string, baseOffset uint64, c Config) (*segment, error) {
 func (s *segment) Append(record *api.Record) (offset uint64, err error) {
 	cur := s.nextOffset
 	record.Offset = cur
-	p, err := proto.Marshal(record)
+	p := &bytes.Buffer{}
+	err = record.Marshal(p)
 	if err != nil {
 		return 0, err
 	}
-	_, pos, err := s.store.Append(p)
+	_, pos, err := s.store.Append(p.Bytes())
 	if err != nil {
 		return 0, err
 	}
@@ -114,7 +115,7 @@ func (s *segment) Read(off uint64) (*api.Record, error) {
 		return nil, err
 	}
 	record := &api.Record{}
-	err = proto.Unmarshal(p, record)
+	err = record.Unmarshal(bytes.NewReader(p))
 	return record, err
 }
 

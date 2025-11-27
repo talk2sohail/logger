@@ -1,13 +1,14 @@
 package logger
 
 import (
+	"bytes"
+	"io"
 	"io/ioutil"
 	"os"
 	"testing"
 
 	"github.com/stretchr/testify/require"
 	api "github.com/talk2sohail/logger/api/v1"
-	"google.golang.org/protobuf/proto"
 )
 
 func TestLog(t *testing.T) {
@@ -91,13 +92,14 @@ func testReader(t *testing.T, log *Log) {
 	require.Equal(t, uint64(0), off)
 
 	reader := log.Reader()
-	b, err := ioutil.ReadAll(reader)
+	b, err := io.ReadAll(reader)
 	require.NoError(t, err)
 
 	read := &api.Record{}
-	err = proto.Unmarshal(b[LenWidth:], read)
+	err = read.Unmarshal(bytes.NewReader(b[8:]))
 	require.NoError(t, err)
 	require.Equal(t, append.Value, read.Value)
+	require.Equal(t, uint64(0), read.Offset)
 }
 
 func testTruncate(t *testing.T, log *Log) {
