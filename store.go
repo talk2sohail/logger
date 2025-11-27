@@ -8,11 +8,11 @@ import (
 )
 
 var (
-	enc = binary.BigEndian
+	Enc = binary.BigEndian
 )
 
 const (
-	lenWidth = 8
+	LenWidth = 8
 )
 
 type store struct {
@@ -41,14 +41,14 @@ func (s *store) Append(p []byte) (n uint64, pos uint64, err error) {
 	pos = s.size
 
 	// The length of a record will always be stored with the most significant byte first
-	if err := binary.Write(s.buf, enc, uint64(len(p))); err != nil {
+	if err := binary.Write(s.buf, Enc, uint64(len(p))); err != nil {
 		return 0, 0, err
 	}
 	w, err := s.buf.Write(p)
 	if err != nil {
 		return 0, 0, err
 	}
-	written := uint64(lenWidth + w)
+	written := uint64(LenWidth + w)
 	s.size += written
 	return written, pos, nil
 }
@@ -59,12 +59,12 @@ func (s *store) Read(pos uint64) ([]byte, error) {
 	if err := s.buf.Flush(); err != nil {
 		return nil, err
 	}
-	size := make([]byte, lenWidth)
+	size := make([]byte, LenWidth)
 	if _, err := s.File.ReadAt(size, int64(pos)); err != nil {
 		return nil, err
 	}
-	b := make([]byte, enc.Uint64(size))
-	if _, err := s.File.ReadAt(b, int64(pos+lenWidth)); err != nil {
+	b := make([]byte, Enc.Uint64(size))
+	if _, err := s.File.ReadAt(b, int64(pos+LenWidth)); err != nil {
 		return nil, err
 	}
 	return b, nil
@@ -77,6 +77,14 @@ func (s *store) ReadAt(p []byte, off int64) (int, error) {
 		return 0, err
 	}
 	return s.File.ReadAt(p, off)
+}
+
+func (s *store) Truncate(size uint64) error {
+	if err := s.File.Truncate(int64(size)); err != nil {
+		return err
+	}
+	s.size = size
+	return nil
 }
 
 func (s *store) Close() error {

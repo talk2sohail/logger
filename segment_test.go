@@ -22,7 +22,7 @@ func TestSegment(t *testing.T) {
 
 	c := Config{}
 	c.Segment.MaxStoreBytes = 1024
-	c.Segment.MaxIndexBytes = entWidth * 3
+	c.Segment.MaxIndexBytes = EntWidth * 3
 
 	s, err := newSegment(tempDir, 16, c)
 	require.NoError(t, err)

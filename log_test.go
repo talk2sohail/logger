@@ -95,7 +95,7 @@ func testReader(t *testing.T, log *Log) {
 	require.NoError(t, err)
 
 	read := &api.Record{}
-	err = proto.Unmarshal(b[lenWidth:], read)
+	err = proto.Unmarshal(b[LenWidth:], read)
 	require.NoError(t, err)
 	require.Equal(t, append.Value, read.Value)
 }

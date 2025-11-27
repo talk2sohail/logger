@@ -9,8 +9,10 @@ import (
 
 var (
 	write = []byte("hello world")
-	width = uint64(len(write)) + lenWidth
+	width = uint64(len(write)) + LenWidth
 )
+
+var want = []byte("hello world")
 
 func TestStoreAppendRead(t *testing.T) {
 	f, err := os.CreateTemp("", "store_append_read_test")
@@ -52,13 +54,13 @@ func testRead(t *testing.T, s *store) {
 func testReadAt(t *testing.T, s *store) {
 	t.Helper()
 	for i, off := uint64(1), int64(0); i < 4; i++ {
-		b := make([]byte, lenWidth)
+		b := make([]byte, LenWidth)
 		n, err := s.ReadAt(b, off)
 		require.NoError(t, err)
-		require.Equal(t, lenWidth, n)
+		require.Equal(t, LenWidth, n)
 		off += int64(n)
 
-		size := enc.Uint64(b)
+		size := Enc.Uint64(b)
 		b = make([]byte, size)
 		n, err = s.ReadAt(b, off)
 		require.NoError(t, err)
@@ -74,7 +76,7 @@ func TestStoreClose(t *testing.T) {
 	defer os.Remove(f.Name())
 	s, err := newStore(f)
 	require.NoError(t, err)
-	_, _, err = s.Append(write)
+	_, _, err = s.Append(want)
 	require.NoError(t, err)
 
 	f, beforeSize, err := openFile(f.Name())

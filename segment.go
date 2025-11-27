@@ -1,7 +1,9 @@
 package logger
 
 import (
+	"bufio"
 	"fmt"
+	"io"
 	"os"
 	"path"
 
@@ -42,20 +44,44 @@ func newSegment(dir string, baseOffset uint64, c Config) (*segment, error) {
 		return nil, err
 	}
 	if s.index, err = newIndex(indexFile, c); err != nil {
-		storeFile.Close()
 		return nil, err
 	}
-	off, _, err := s.index.Read(-1)
-	// if we can't read the last entry of the index, it's either a new segment or a corrupted one
-	// in either case, we'll start from the beginning of the segment
-	if err != nil {
+	if off, _, err := s.index.Read(-1); err != nil {
 		s.nextOffset = baseOffset
 	} else {
 		s.nextOffset = baseOffset + uint64(off) + 1
 	}
+	// check for store file corruption
+	b := bufio.NewReader(s.store.File)
+	var pos uint64
+	for {
+		size := make([]byte, LenWidth)
+		_, err := io.ReadFull(b, size)
+		if err == io.EOF || err == io.ErrUnexpectedEOF {
+			break
+		}
+		if err != nil {
+			return nil, err
+		}
+		p := make([]byte, Enc.Uint64(size))
+		_, err = io.ReadFull(b, p)
+		if err != nil {
+			if err == io.ErrUnexpectedEOF {
+				if err := s.store.Truncate(pos); err != nil {
+					return nil, err
+				}
+				if err := s.index.Truncate(pos / EntWidth); err != nil {
+					return nil, err
+				}
+				s.nextOffset = baseOffset + uint64(pos/EntWidth)
+			} else {
+				return nil, err
+			}
+		}
+		pos += uint64(LenWidth + len(p))
+	}
 	return s, nil
 }
-
 func (s *segment) Append(record *api.Record) (offset uint64, err error) {
 	cur := s.nextOffset
 	record.Offset = cur
@@ -118,12 +144,4 @@ func (s *segment) Remove() error {
 		return err
 	}
 	return nil
-}
-
-func nearestMultiple(j, k uint64) uint64 {
-	if j >= 0 {
-		return (j / k) * k
-	}
-	return ((j - k + 1) / k) * k
-
 }
