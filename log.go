@@ -89,17 +89,15 @@ func (l *Log) Append(record *api.Record) (uint64, error) {
 func (l *Log) Read(off uint64) (*api.Record, error) {
 	l.mu.RLock()
 	defer l.mu.RUnlock()
-	var s *segment
-	for _, segment := range l.segments {
-		if segment.baseOffset <= off && off < segment.nextOffset {
-			s = segment
-			break
-		}
-	}
-	if s == nil || s.nextOffset <= off {
+
+	segmentIndex := sort.Search(len(l.segments), func(i int) bool {
+		return l.segments[i].baseOffset > off
+	}) - 1
+
+	if segmentIndex < 0 || off >= l.segments[segmentIndex].nextOffset {
 		return nil, fmt.Errorf("offset out of range: %d", off)
 	}
-	return s.Read(off)
+	return l.segments[segmentIndex].Read(off)
 }
 
 func (l *Log) newSegment(off uint64) error {

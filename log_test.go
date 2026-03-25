@@ -20,6 +20,7 @@ func TestLog(t *testing.T) {
 		"init with existing segments":       testInitExisting,
 		"reader":                            testReader,
 		"truncate":                          testTruncate,
+		"read across multiple segments":     testReadMultiSegment,
 	} {
 		t.Run(scenario, func(t *testing.T) {
 			dir, err := ioutil.TempDir("", "store-test")
@@ -115,5 +116,48 @@ func testTruncate(t *testing.T, log *Log) {
 	require.NoError(t, err)
 
 	_, err = log.Read(0)
+	require.Error(t, err)
+}
+
+func testReadMultiSegment(t *testing.T, log *Log) {
+	// MaxStoreBytes is 32, so each segment holds ~1 record.
+	// Append enough records to span multiple segments.
+	records := []*api.Record{
+		{Value: []byte("first")},
+		{Value: []byte("second")},
+		{Value: []byte("third")},
+		{Value: []byte("fourth")},
+		{Value: []byte("fifth")},
+	}
+
+	for i, rec := range records {
+		off, err := log.Append(rec)
+		require.NoError(t, err)
+		require.Equal(t, uint64(i), off)
+	}
+
+	require.Greater(t, len(log.segments), 1,
+		"expected multiple segments to test binary search")
+
+	for i, want := range records {
+		got, err := log.Read(uint64(i))
+		require.NoError(t, err)
+		require.Equal(t, want.Value, got.Value,
+			"mismatch at offset %d", i)
+	}
+
+	lowest, err := log.LowestOffset()
+	require.NoError(t, err)
+	got, err := log.Read(lowest)
+	require.NoError(t, err)
+	require.Equal(t, records[0].Value, got.Value)
+
+	highest, err := log.HighestOffset()
+	require.NoError(t, err)
+	got, err = log.Read(highest)
+	require.NoError(t, err)
+	require.Equal(t, records[len(records)-1].Value, got.Value)
+
+	_, err = log.Read(highest + 1)
 	require.Error(t, err)
 }
